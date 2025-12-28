@@ -41,6 +41,9 @@ func (q *Queue) Enqueue(ctx context.Context, topic string, payload []byte) (stri
 	}
 
 	tq.pending = append(tq.pending, j)
+
+	tq.cond.Signal()
+
 	return id, nil
 }
 
