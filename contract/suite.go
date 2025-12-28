@@ -180,4 +180,54 @@ func RunQueueContractTests(t *testing.T, factory QueueFactory) {
 			t.Errorf("Ack failed: %v", err)
 		}
 	})
+
+	t.Run("AckTwiceFails", func(t *testing.T) {
+		q, teardown := factory(t)
+		defer teardown()
+
+		ctx := context.Background()
+
+		topic := "test-topic"
+		_, err := q.Enqueue(ctx, topic, []byte("data"))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		job, err := q.Dequeue(ctx, "test-topic")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := job.Ack(ctx); err != nil {
+			t.Fatalf("first ack failed: %v", err)
+		}
+
+		if err := job.Ack(ctx); err == nil {
+			t.Fatal("expected error on second ack, got nil")
+		}
+	})
+
+	t.Run("NackRequeuesAtBack", func(t *testing.T) {
+		q, teardown := factory(t)
+		defer teardown()
+
+		ctx := context.Background()
+
+		topic := "test-topic"
+
+		q.Enqueue(ctx, topic, []byte("job-1"))
+		q.Enqueue(ctx, topic, []byte("job-2"))
+
+		job1, _ := q.Dequeue(ctx, topic)
+		job2, _ := q.Dequeue(ctx, topic)
+
+		_ = job1.Nack(ctx, context.Canceled)
+		_ = job2.Ack(ctx)
+
+		job3, _ := q.Dequeue(ctx, topic)
+
+		if string(job3.Payload()) != "job-1" {
+			t.Fatalf("expected job-1 after nack, got %s", job3.Payload())
+		}
+	})
 }
