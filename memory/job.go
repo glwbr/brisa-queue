@@ -2,6 +2,16 @@ package memory
 
 import (
 	"context"
+
+	"github.com/brisa-queue/queue"
+)
+
+type jobState int
+
+const (
+	jobPending jobState = iota
+	jobInFlight
+	jobDone
 )
 
 type job struct {
@@ -9,6 +19,7 @@ type job struct {
 	payload []byte
 	queue   *Queue
 	topic   string
+	state   jobState
 }
 
 func (j *job) ID() string {
@@ -20,7 +31,20 @@ func (j *job) Payload() []byte {
 }
 
 func (j *job) Ack(ctx context.Context) error {
-	// TODO: Implement
+	q := j.queue
+
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	tq := q.topics[j.topic]
+
+	if j.state != jobInFlight {
+		return queue.ErrInvalidJobState
+	}
+
+	delete(tq.inflight, j.id)
+	j.state = jobDone
+
 	return nil
 }
 

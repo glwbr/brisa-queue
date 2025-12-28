@@ -84,6 +84,8 @@ func (q *Queue) Dequeue(ctx context.Context, topic string) (*job, error) {
 
 	j := tq.pending[0]
 	tq.pending = tq.pending[1:]
+
+	j.state = jobInFlight
 	tq.inflight[j.id] = j
 
 	return j, nil
