@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/brisa-queue/queue"
 )
 
 type Queue struct {
@@ -22,8 +24,9 @@ type topicQueue struct {
 
 // New creates a new in-memory queue.
 func New() *Queue {
-	// TODO: Implement
-	return nil
+	return &Queue{
+		topics: make(map[string]*topicQueue),
+	}
 }
 
 func (q *Queue) Enqueue(ctx context.Context, topic string, payload []byte) (string, error) {
@@ -47,7 +50,7 @@ func (q *Queue) Enqueue(ctx context.Context, topic string, payload []byte) (stri
 	return id, nil
 }
 
-func (q *Queue) Dequeue(ctx context.Context, topic string) (*job, error) {
+func (q *Queue) Dequeue(ctx context.Context, topic string) (queue.Job, error) {
 	// NOTE: (to myself) Context-aware blocking dequeue implementation:
 	//
 	// sync.Cond.Wait() blocks until Signal()/Broadcast() but doesn't respect context cancellation.
