@@ -49,6 +49,23 @@ func (j *job) Ack(ctx context.Context) error {
 }
 
 func (j *job) Nack(ctx context.Context, reason error) error {
-	// TODO: Implement
+	q := j.queue
+
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	tq := q.topics[j.topic]
+
+	if j.state != jobInFlight {
+		return queue.ErrInvalidJobState
+	}
+
+	delete(tq.inflight, j.id)
+
+	j.state = jobPending
+	tq.pending = append(tq.pending, j)
+
+	tq.cond.Signal()
+
 	return nil
 }
