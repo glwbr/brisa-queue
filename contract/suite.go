@@ -88,7 +88,6 @@ func RunQueueContractTests(t *testing.T, factory QueueFactory) {
 		defer cancel()
 
 		topic := "test-topic"
-
 		done := make(chan error, 1)
 
 		go func() {
@@ -120,9 +119,7 @@ func RunQueueContractTests(t *testing.T, factory QueueFactory) {
 		defer teardown()
 
 		ctx := context.Background()
-
 		payload := []byte("retry-me")
-
 		topic := "test-topic"
 
 		if _, err := q.Enqueue(ctx, topic, payload); err != nil {
@@ -146,34 +143,6 @@ func RunQueueContractTests(t *testing.T, factory QueueFactory) {
 		if got := string(job2.Payload()); got != string(payload) {
 			t.Fatalf("payload mismatch after nack: got %q want %q", got, payload)
 		}
-	})
-
-	t.Run("IsolationBetweenTopics", func(t *testing.T) {
-		q, teardown := factory(t)
-		defer teardown()
-		ctx := context.Background()
-		topicA := "topic-a"
-		topicB := "topic-b"
-
-		if _, err := q.Enqueue(ctx, topicA, []byte("data-a")); err != nil {
-			t.Fatal(err)
-		}
-
-		ctxB, cancelB := context.WithTimeout(context.Background(), 50*time.Millisecond)
-		defer cancelB()
-		_, err := q.Dequeue(ctxB, topicB)
-		if err == nil {
-			t.Error("Expected error when dequeuing from empty topic B, got job")
-		}
-		// Verify A still has the job
-		job, err := q.Dequeue(ctx, topicA)
-		if err != nil {
-			t.Fatalf("Failed to dequeue from topic A: %v", err)
-		}
-		if string(job.Payload()) != "data-a" {
-			t.Errorf("Got wrong data from topic A")
-		}
-		_ = job.Ack(ctx)
 	})
 
 	t.Run("IsolationBetweenTopics", func(t *testing.T) {
